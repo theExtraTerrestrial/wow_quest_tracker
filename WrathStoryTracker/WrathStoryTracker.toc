@@ -1,0 +1,7 @@
+## Interface: 110105
+## Title: Wrath Story Tracker
+## SavedVariables: WrathStoryTrackerDB
+WrathStoryTracker.lua
+questlist_wotlk_alliance.lua
+ui.lua
+minimap.lua
