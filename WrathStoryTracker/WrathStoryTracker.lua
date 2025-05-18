@@ -1,5 +1,9 @@
 WrathStoryTracker = WrathStoryTracker or {}
 WrathStoryTrackerDB = WrathStoryTrackerDB or {}
+WrathStoryTrackerDB.completed = WrathStoryTrackerDB.completed or {}
+WrathStoryTrackerDB.collapsed = WrathStoryTrackerDB.collapsed or {}
+WrathStoryTrackerDB.opacity = WrathStoryTrackerDB.opacity or 1
+WrathStoryTrackerDB.tab = WrathStoryTrackerDB.tab or 1
 
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")

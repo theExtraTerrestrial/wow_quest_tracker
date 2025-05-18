@@ -1,16 +1,54 @@
 local WST = WrathStoryTracker
 local DB = WrathStoryTrackerDB
 
+local checkboxes = {}
+local headers = {}
+
 WST.ui = {}
 
-function WST.ui:Init()
-    DB.opacity = DB.opacity or 1
-    DB.tab = DB.tab or 1
-    DB.completed = DB.completed or {}
-    DB.collapsed = DB.collapsed or {}
-
+function WST.ui:Init()    
     local QUESTS_BY_ZONE = WrathStoryTracker_QUESTS_BY_ZONE or {}
     local ZONE_ORDER = WrathStoryTracker_ZONE_ORDER or {}
+	
+	local function IsQuestCompletedAPI(questID)
+		if C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted then
+			return C_QuestLog.IsQuestFlaggedCompleted(questID)
+		end
+		return false
+    end
+	
+	local function SaveProgress()
+        for zone, cbList in pairs(checkboxes) do
+            DB.completed[zone] = DB.completed[zone] or {}
+            for i, cb in ipairs(cbList) do
+                DB.completed[zone][i] = cb:GetChecked()
+            end
+        end
+    end
+
+    local function LoadProgress()
+        for zone, quests in pairs(QUESTS_BY_ZONE) do
+            checkboxes[zone] = checkboxes[zone] or {}
+            DB.completed[zone] = DB.completed[zone] or {}
+            for i, quest in ipairs(quests) do
+                local cb = checkboxes[zone][i]
+                if cb then
+                    if IsQuestCompletedAPI(quest.id) then
+                        cb:SetChecked(true)
+                        cb:Disable()
+                        DB.completed[zone][i] = true
+                    elseif DB.completed[zone][i] ~= nil then
+                        cb:SetChecked(DB.completed[zone][i])
+                        cb:Enable()
+                    else
+                        cb:SetChecked(false)
+                        cb:Enable()
+                        DB.completed[zone][i] = false
+                    end
+                end
+            end
+        end
+    end
 
     -- Main Frame
     local frame = CreateFrame("Frame", "WrathStoryTrackerFrame", UIParent, "BasicFrameTemplateWithInset")
@@ -115,6 +153,29 @@ function WST.ui:Init()
         print("Wrath Story Tracker: Synced quest completion with API.")
         SaveProgress()
     end)
+	
+	local function DumpTableError(tbl, name)
+		name = name or "Table"
+		if type(tbl) ~= "table" then
+			error(name .. ": (not a table)")
+		end
+		local lines = {name .. " = {"}
+		for k, v in pairs(tbl) do
+			table.insert(lines, "  [" .. tostring(k) .. "] = " .. tostring(v))
+			
+		end
+		table.insert(lines, "}")
+		error(table.concat(lines, "\n"))
+	end
+	
+	local dumpErrorButton = CreateFrame("Button", nil, tabs[2].content, "UIPanelButtonTemplate")
+	dumpErrorButton:SetSize(180, 24)
+	dumpErrorButton:SetPoint("TOPLEFT", syncButton, "BOTTOMLEFT", 0, -48)
+	dumpErrorButton:SetText("Dump Collapsed (Error)")
+	dumpErrorButton:SetScript("OnClick", function()
+		DumpTableError(DB, "DB")
+	end)
+	
 
     -- Story Tab Functionality
     local HEADER_HEIGHT, CHECKBOX_HEIGHT = 28, 26
@@ -138,51 +199,10 @@ function WST.ui:Init()
         content.topSpacer:SetHeight(28)
     end
 
-    local checkboxes, headers = {}, {}
 
-    local function IsQuestCompletedAPI(questID)
-        if C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted then
-            return C_QuestLog.IsQuestFlaggedCompleted(questID)
-        end
-        return false
-    end
-
-    local function SaveProgress()
-        for zone, cbList in pairs(checkboxes) do
-            DB.completed[zone] = DB.completed[zone] or {}
-            for i, cb in ipairs(cbList) do
-                DB.completed[zone][i] = cb:GetChecked()
-            end
-        end
-    end
-
-    local function LoadProgress()
-        for zone, quests in pairs(QUESTS_BY_ZONE) do
-            checkboxes[zone] = checkboxes[zone] or {}
-            DB.completed[zone] = DB.completed[zone] or {}
-            for i, quest in ipairs(quests) do
-                local cb = checkboxes[zone][i]
-                if cb then
-                    if IsQuestCompletedAPI(quest.id) then
-                        cb:SetChecked(true)
-                        cb:Disable()
-                        DB.completed[zone][i] = true
-                    elseif DB.completed[zone][i] ~= nil then
-                        cb:SetChecked(DB.completed[zone][i])
-                        cb:Enable()
-                    else
-                        cb:SetChecked(false)
-                        cb:Enable()
-                        DB.completed[zone][i] = false
-                    end
-                end
-            end
-        end
-    end
-
-    local function ToggleZone(zone)
-        DB.collapsed = DB.collapsed or {}
-        DB.collapsed[zone] = not DB.collapsed[zone]
+    local function ToggleZone(zone)        
+        DB.collapsed[zone] = not DB.collapsed[zone]		
+		print("Toggled zone: [" .. zone .. "] collapsed now:", DB.collapsed[zone])
         frame:BuildCheckboxes()
         SaveProgress()
     end
@@ -197,14 +217,16 @@ function WST.ui:Init()
         return line
     end
 
-    function frame:BuildCheckboxes()
+    function frame:BuildCheckboxes()		
         for _, cbList in pairs(checkboxes) do
             for _, cb in ipairs(cbList) do cb:Hide() end
         end
-        for _, header in pairs(headers) do header:Hide() end
+		for k in pairs(checkboxes) do checkboxes[k] = nil end
+		for _, header in pairs(headers) do header:Hide() end
+        for k in pairs(headers) do headers[k] = nil end
         if content.divider then content.divider:Hide(); content.divider = nil end
         if content.hiddenTitle then content.hiddenTitle:Hide(); content.hiddenTitle = nil end
-        checkboxes, headers = {}, {}
+        
 
         local yOffset = -28
         for _, zone in ipairs(ZONE_ORDER) do
@@ -213,6 +235,7 @@ function WST.ui:Init()
                 local quests = QUESTS_BY_ZONE[zone]
                 if quests then
                     local header = headers[zone]
+					print("Header for zone: ["..zone.."] isCollapsed:", tostring(DB.collapsed[zone]))
                     if not header then
                         header = CreateFrame("Button", nil, content)
                         header:SetSize(340, HEADER_HEIGHT)
@@ -222,7 +245,7 @@ function WST.ui:Init()
                         header.icon:SetSize(18, 18)
                         header.icon:SetPoint("LEFT", 8, 0)
                         header:SetNormalFontObject(GameFontNormalLarge)
-                        header:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square")
+                        header:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square")						
                         header:SetScript("OnClick", function() ToggleZone(zone) end)
                         headers[zone] = header
                     end
