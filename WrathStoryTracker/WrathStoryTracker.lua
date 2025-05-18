@@ -7,6 +7,7 @@ WrathStoryTrackerDB.tab = WrathStoryTrackerDB.tab or 1
 
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
+PrintCollapsedState("After ADDON_LOADED")
 frame:SetScript("OnEvent", function(self, event, addon)
     if addon == "WrathStoryTracker" then
         if WrathStoryTracker.ui and WrathStoryTracker.ui.Init then

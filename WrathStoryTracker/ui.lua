@@ -1,5 +1,4 @@
 local WST = WrathStoryTracker
-local DB = WrathStoryTrackerDB
 
 local checkboxes = {}
 local headers = {}
@@ -19,9 +18,9 @@ function WST.ui:Init()
 	
 	local function SaveProgress()
         for zone, cbList in pairs(checkboxes) do
-            DB.completed[zone] = DB.completed[zone] or {}
+            WrathStoryTrackerDB.completed[zone] = WrathStoryTrackerDB.completed[zone] or {}
             for i, cb in ipairs(cbList) do
-                DB.completed[zone][i] = cb:GetChecked()
+                WrathStoryTrackerDB.completed[zone][i] = cb:GetChecked()
             end
         end
     end
@@ -29,21 +28,21 @@ function WST.ui:Init()
     local function LoadProgress()
         for zone, quests in pairs(QUESTS_BY_ZONE) do
             checkboxes[zone] = checkboxes[zone] or {}
-            DB.completed[zone] = DB.completed[zone] or {}
+            WrathStoryTrackerDB.completed[zone] = WrathStoryTrackerDB.completed[zone] or {}
             for i, quest in ipairs(quests) do
                 local cb = checkboxes[zone][i]
                 if cb then
                     if IsQuestCompletedAPI(quest.id) then
                         cb:SetChecked(true)
                         cb:Disable()
-                        DB.completed[zone][i] = true
-                    elseif DB.completed[zone][i] ~= nil then
-                        cb:SetChecked(DB.completed[zone][i])
+                        WrathStoryTrackerDB.completed[zone][i] = true
+                    elseif WrathStoryTrackerDB.completed[zone][i] ~= nil then
+                        cb:SetChecked(WrathStoryTrackerDB.completed[zone][i])
                         cb:Enable()
                     else
                         cb:SetChecked(false)
                         cb:Enable()
-                        DB.completed[zone][i] = false
+                        WrathStoryTrackerDB.completed[zone][i] = false
                     end
                 end
             end
@@ -65,7 +64,7 @@ function WST.ui:Init()
     frame.title:SetFontObject("GameFontHighlightLarge")
     frame.title:SetPoint("LEFT", frame.TitleBg, "LEFT", 5, 0)
     frame.title:SetText("Wrath Story Tracker")
-    frame:SetAlpha(DB.opacity)
+    frame:SetAlpha(WrathStoryTrackerDB.opacity)
 
     -- Tabs
     local tabs = {}
@@ -79,7 +78,7 @@ function WST.ui:Init()
                 tab.content:Hide()
             end
         end
-        DB.tab = idx
+        WrathStoryTrackerDB.tab = idx
     end
 
     -- Story Tab
@@ -112,7 +111,7 @@ function WST.ui:Init()
     slider:SetMinMaxValues(0.2, 1)
     slider:SetValueStep(0.05)
     slider:SetObeyStepOnDrag(true)
-    slider:SetValue(DB.opacity)
+    slider:SetValue(WrathStoryTrackerDB.opacity)
     slider.textLow = _G[slider:GetName().."Low"]
     slider.textHigh = _G[slider:GetName().."High"]
     slider.text = _G[slider:GetName().."Text"]
@@ -120,7 +119,7 @@ function WST.ui:Init()
     slider.textHigh:SetText("100%")
     slider.text:SetText("Opacity")
     slider:SetScript("OnValueChanged", function(self, value)
-        DB.opacity = value
+        WrathStoryTrackerDB.opacity = value
         frame:SetAlpha(value)
     end)
 
@@ -134,16 +133,16 @@ function WST.ui:Init()
             local quests = QUESTS_BY_ZONE[zone]
             if quests then
                 checkboxes[zone] = checkboxes[zone] or {}
-                DB.completed[zone] = DB.completed[zone] or {}
+                WrathStoryTrackerDB.completed[zone] = WrathStoryTrackerDB.completed[zone] or {}
                 for i, quest in ipairs(quests) do
                     local cb = checkboxes[zone][i]
                     if cb then
                         if IsQuestCompletedAPI(quest.id) then
                             cb:SetChecked(true)
                             cb:Disable()
-                            DB.completed[zone][i] = true
+                            WrathStoryTrackerDB.completed[zone][i] = true
                         else
-                            cb:SetChecked(DB.completed[zone][i] or false)
+                            cb:SetChecked(WrathStoryTrackerDB.completed[zone][i] or false)
                             cb:Enable()
                         end
                     end
@@ -173,7 +172,7 @@ function WST.ui:Init()
 	dumpErrorButton:SetPoint("TOPLEFT", syncButton, "BOTTOMLEFT", 0, -48)
 	dumpErrorButton:SetText("Dump Collapsed (Error)")
 	dumpErrorButton:SetScript("OnClick", function()
-		DumpTableError(DB, "DB")
+		DumpTableError(WrathStoryTrackerDB, "WrathStoryTrackerDB")
 	end)
 	
 
@@ -201,8 +200,7 @@ function WST.ui:Init()
 
 
     local function ToggleZone(zone)        
-        DB.collapsed[zone] = not DB.collapsed[zone]		
-		print("Toggled zone: [" .. zone .. "] collapsed now:", DB.collapsed[zone])
+        WrathStoryTrackerDB.collapsed[zone] = not WrathStoryTrackerDB.collapsed[zone]				
         frame:BuildCheckboxes()
         SaveProgress()
     end
@@ -230,12 +228,11 @@ function WST.ui:Init()
 
         local yOffset = -28
         for _, zone in ipairs(ZONE_ORDER) do
-            local isCollapsed = DB.collapsed[zone]
+            local isCollapsed = WrathStoryTrackerDB.collapsed[zone]
             if not isCollapsed then
                 local quests = QUESTS_BY_ZONE[zone]
                 if quests then
-                    local header = headers[zone]
-					print("Header for zone: ["..zone.."] isCollapsed:", tostring(DB.collapsed[zone]))
+                    local header = headers[zone]					
                     if not header then
                         header = CreateFrame("Button", nil, content)
                         header:SetSize(340, HEADER_HEIGHT)
@@ -281,8 +278,8 @@ function WST.ui:Init()
                             cb:SetChecked(true)
                             cb:Disable()
                         else
-                            DB.completed[zone] = DB.completed[zone] or {}
-                            cb:SetChecked(DB.completed[zone][i] or false)
+                            WrathStoryTrackerDB.completed[zone] = WrathStoryTrackerDB.completed[zone] or {}
+                            cb:SetChecked(WrathStoryTrackerDB.completed[zone][i] or false)
                             cb:Enable()
                         end
                         cb:Show()
@@ -294,7 +291,7 @@ function WST.ui:Init()
 
         local numCollapsed = 0
         for _, zone in ipairs(ZONE_ORDER) do
-            if DB.collapsed[zone] then numCollapsed = numCollapsed + 1 end
+            if WrathStoryTrackerDB.collapsed[zone] then numCollapsed = numCollapsed + 1 end
         end
         if numCollapsed > 0 then
             yOffset = yOffset - 8
@@ -309,7 +306,7 @@ function WST.ui:Init()
             yOffset = yOffset - HEADER_HEIGHT
 
             for _, zone in ipairs(ZONE_ORDER) do
-                if DB.collapsed[zone] then
+                if WrathStoryTrackerDB.collapsed[zone] then
                     local header = headers[zone]
                     if not header then
                         header = CreateFrame("Button", nil, content)
@@ -333,7 +330,7 @@ function WST.ui:Init()
             end
         end
 
-        content:SetHeight(math.abs(yOffset) + 20)
+        content:SetHeight(math.abs(yOffset) + 20)		
     end
 
     frame:RegisterEvent("QUEST_TURNED_IN")
@@ -342,7 +339,7 @@ function WST.ui:Init()
         if event == "PLAYER_LOGIN" then
             self:BuildCheckboxes()
             LoadProgress()
-            frame:SetAlpha(DB.opacity or 1)
+            frame:SetAlpha(WrathStoryTrackerDB.opacity or 1)
         elseif event == "QUEST_TURNED_IN" then
             local questID = ...
             for _, zone in ipairs(ZONE_ORDER) do
@@ -354,7 +351,7 @@ function WST.ui:Init()
                             if cb then
                                 cb:SetChecked(true)
                                 cb:Disable()
-                                DB.completed[zone][i] = true
+                                WrathStoryTrackerDB.completed[zone][i] = true
                                 SaveProgress()
                             end
                         end
@@ -367,12 +364,12 @@ function WST.ui:Init()
     -- Tabs wiring
     PanelTemplates_SetNumTabs(frame, #tabs)
     PanelTemplates_UpdateTabs(frame)
-    SelectTab(DB.tab or 1)
+    SelectTab(WrathStoryTrackerDB.tab or 1)
 
     frame:HookScript("OnShow", function(self)
-        SelectTab(DB.tab or 1)
-        slider:SetValue(DB.opacity or 1)
-        self:SetAlpha(DB.opacity or 1)
+        SelectTab(WrathStoryTrackerDB.tab or 1)
+        slider:SetValue(WrathStoryTrackerDB.opacity or 1)
+        self:SetAlpha(WrathStoryTrackerDB.opacity or 1)
     end)
 
     -- Slash command
